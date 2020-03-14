@@ -1,6 +1,6 @@
 -- Relay and GPIO config
 pin = 1
-gpio.mode(pin,gpio.OUTPUT)
+gpio.mode(pin, gpio.OUTPUT)
 
 MS = 1000 -- us to ms
 local function activate_door()
@@ -11,22 +11,36 @@ local function activate_door()
 end
 
 -- WiFi and server config
-wifi.setmode(wifi.STATION)
-wifi.sta.sleeptype(NONE_SLEEP)
-wifi.setphymode(wifi.PHYMODE_G)
+wifi.setmode(wifi.SOFTAP)
+wifi.setphymode(wifi.PHYMODE_B)
 
-station_cfg={}
-station_cfg.ssid="OpenWrt"
-station_cfg.pwd="password"
-station_cfg.save=true           -- saves config to flash
-wifi.sta.config(station_cfg)
+ap_cfg={}
+ap_cfg.ssid="Abreme la puerta"
+ap_cfg.pwd="holahola"
+ap_cfg.auth=wifi.WPA_WPA2_PSK
+ap_cfg.save=true           -- saves config to flash
+wifi.ap.config(ap_cfg)
+
+ip_cfg =
+{
+    ip="192.168.1.1",
+    netmask="255.255.255.0",
+    gateway="192.168.1.1"
+}
+wifi.ap.setip(ip_cfg)
+
+
+dhcp_config ={}
+dhcp_config.start = "192.168.1.100"
+wifi.ap.dhcp.config(dhcp_config)
+wifi.ap.dhcp.start()
 
 -- DEBUG: The following prints 5 if the module is connected and has an IP assigned.
 -- print(wifi.sta.status())
 
 -- Use the nodemcu specific pool servers and keep the time synced
 -- forever (this has the autorepeat flag set).
-sntp.sync(nil, nil, nil, 1)
+-- sntp.sync(nil, nil, nil, 1)
 
 
 local function handler(c, request)
@@ -39,12 +53,12 @@ local function handler(c, request)
    majorVer, minorVer, devVer, chipid, flashid, flashsize, flashmode, flashspeed = node.info()
    nodemcu_info = majorVer.."."..minorVer.."."..devVer
    host = wifi.sta.gethostname()
-   tm = rtctime.epoch2cal(rtctime.get())
-   tm = string.format("%02d/%02d/%04d at %02d:%02d",
-                      tm["day"], tm["mon"], tm["year"], tm["hour"], tm["min"])
+--   tm = rtctime.epoch2cal(rtctime.get())
+--    tm = string.format("%02d/%02d/%04d at %02d:%02d",
+--                       tm["day"], tm["mon"], tm["year"], tm["hour"], tm["min"])
    cpu_freq = node.getcpufreq()
-   ip = wifi.sta.getip()
-   mac = wifi.sta.getmac()
+   ip = wifi.ap.getip()
+   mac = wifi.ap.getmac()
    hash = crypto.toHex(crypto.fhash("sha1", "init.lua"))
 
    local homepage = [[
@@ -83,7 +97,6 @@ local function handler(c, request)
    <body>
       <pre>NodeMCU: &#9;]]..nodemcu_info..[[</pre>
       <pre>Hostname: &#9;]]..host..[[</pre>
-      <pre>UTC Datetime: &#9;]]..tm..[[</pre>
       <pre>CPU Freq.: &#9;]]..cpu_freq..[[ MHz</pre>
       <pre>IP addr.: &#9;]]..ip..[[</pre>
       <pre>MAC addr.: &#9;]]..mac..[[</pre>
